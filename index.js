@@ -13,16 +13,13 @@ import {rundailygain} from './promptgain.js'
 import {rundailyloss} from './promptloss.js'
 import { joinCSVFiles } from './joincsv.js'
 import {joinCSVFilesloss} from './joincsv2.js'
-import {scrapeGainersA} from './dailygainer2A.js'
-import {scrapeGainersB} from './dailygainer2B.js'
-import {scrapelosersA}  from './dailyloser2A.js'
-import {scrapelosersB}  from './dailyloser2B.js'
+
 
 async function runAllTasksSequentially() {
   try {
     await scrapeStockData();
     await scrapeStockDataB();
-   
+
     console.log('daily Gainer scraping completed!');
 
     await filterCSV('dailygainer.csv', 'filtereddailygainer.csv');

@@ -1,56 +1,40 @@
-import puppeteer from 'puppeteer';
-import fs from 'fs';
-import path from 'path';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { createObjectCsvWriter } from 'csv-writer';
 
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+const url = 'https://money.rediff.com/losers/bse/daily/groupb';
 
 export async function scrapeStockDataBloser() {
-  const browser = await puppeteer.launch({ headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-   });
-  const page = await browser.newPage();
+  try {
+    const { data } = await axios.get(url);
+    const $ = cheerio.load(data);
 
-  await page.goto('https://money.rediff.com/losers/bse/daily/groupb', { waitUntil: 'networkidle2' });
+    const results = [];
 
-  await page.waitForSelector('.dataTable tbody tr');
+    $('table.dataTable tbody tr').each((index, element) => {
+      const company = $(element).find('td:nth-child(1)').text().trim();
+      const group = $(element).find('td:nth-child(2)').text().trim();
+      const change = $(element).find('td:nth-child(5)').text().trim();
 
-  await delay(2000); // wait 2 seconds
-
-  const stockData = await page.evaluate(() => {
-    const rows = document.querySelectorAll('.dataTable tbody tr');
-    const data = [];
-
-    rows.forEach(row => {
-      const companyAnchor = row.querySelector('td a');
-      const group = row.children[1]?.textContent.trim();
-      const percentChange = row.children[4]?.textContent.trim();
-      const company = companyAnchor?.textContent.trim();
-
-      if (company && group && percentChange) {
-        data.push({ company, group, percentChange });
-      }
+      results.push({ company, group, change });
     });
 
-    return data;
-  });
+    const csvWriter = createObjectCsvWriter({
+      path: 'dailyloserB.csv',
+      header: [
+        { id: 'company', title: 'Company' },
+        { id: 'group', title: 'Group' },
+        { id: 'change', title: 'Change' },
+      ]
+    });
 
-  console.log(stockData);
-
-  // Convert to CSV format
-  const csvHeader = 'Company,Group,Change\n';
-  const csvRows = stockData.map(item =>
-    `"${item.company}","${item.group}","${item.percentChange}"`
-  );
-  const csvContent = csvHeader + csvRows.join('\n');
-
-  // Save to file
-  const filePath = path.join('./', 'dailyloserB.csv');
-  fs.writeFileSync(filePath, csvContent, 'utf8');
-  console.log(`\n✅ CSV saved at ${filePath}`);
-
-  await browser.close();
+    await csvWriter.writeRecords(results);
+    console.log('✅ CSV saved as "dailyloserB.csv"');
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+  }
 }
+
+
 
 
